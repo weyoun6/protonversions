@@ -1,0 +1,96 @@
+Hi, I got something working in the end, but at some point, it stopped working properly with an error in the sorting! Might have been when I moved from MX to EndevourOS, but not sure. I did not get around to spending more time on it to troubleshoot. Anyway, here is my attempt with my script, "protonversions" which nearly works.
+
+~$ protonversions 
+1049410,Superliminal,7.0-100 
+1167630,Teardown,7.0-100 
+205100,Dishonored,7.0-100 
+206440,To the Moon,7.0-100 
+join: /dev/fd/63:11: is not sorted: 220,Half-Life 2 
+220240,Far Cry® 3,7.0-100 
+233230,Kairo,7.0-100 
+379720,DOOM,7.0-100 
+4500,S.T.A.L.K.E.R.: Shadow of Chernobyl,7.0-100 
+473950,Manifold Garden,7.0-100 
+57900,Duke Nukem Forever,7.0-100 
+8870,BioShock Infinite,7.0-100 
+join: input is not in sorted order
+
+What is the script doing at a high level?
+
+1) make a text file ("protonversionslist") where each line is “steamgameid,protonversion”
+For me currently this looks like:
+4500,7.0-100	
+8870,7.0-100	
+57900,7.0-100	
+205100,7.0-100	
+206440,7.0-100	
+220240,7.0-100	
+233230,7.0-100	
+379720,7.0-100	
+473950,7.0-100	
+1049410,7.0-100	
+1167630,7.0-100	
+1493710,7.0-100	
+1580130,6.3-3	
+
+2) make another text file ("steamidslist") with a list of steamid,gamename
+For me, currently I have:
+220,Half-Life 2
+620,Portal 2
+4500,S.T.A.L.K.E.R.: Shadow of Chernobyl
+8870,BioShock Infinite
+9050,DOOM 3
+57900,Duke Nukem Forever
+205100,Dishonored
+206440,To the Moon
+219890,Antichamber
+220240,Far Cry® 3
+233230,Kairo
+240440,Quadrilateral Cowboy
+317400,Portal Stories: Mel
+337340,Finding Paradise
+379720,DOOM
+466630,The Pedestrian
+473950,Manifold Garden
+926860,Bloody Rally Show
+1049410,Superliminal
+1070560,Steam Linux Runtime
+1167630,Teardown
+1255980,Portal Reloaded
+1391110,Steam Linux Runtime - Soldier
+1966350,Selaco Demo
+
+3) Join the two lists matching the steamid
+
+Contents of protonversions script:
+
+
+#!/bin/bash
+
+# Get proton versions in use and game ids
+dirs="/Data/Drive2/SteamLibrary/steamapps/compatdata/"
+
+list(){
+	for i in $dirs*; do
+		appid=$(basename $i)
+		vers(){
+			if [[ ! -f $i/version ]]; then
+				printf "N/A"
+			else
+				cat $i/version
+			fi
+		}
+		printf "%s\t%s\n" "$appid","$(vers)"
+	done
+}
+
+list | LC_ALL=C sort -nk1 > /home/fountains/Scripts/protonversionslist
+
+#Update the steamids list
+grep -n "name" /Data/Drive2/SteamLibrary/steamapps/*.acf | sed -e 's/^.*_//;s/\.acf:.:/ /;s/name//;s/"//g;s/\t//g;s/ /,/' | LC_ALL=C sort -nk1 > /home/fountains/Scripts/steamidslist
+
+#Remove lines with "Proton"
+gawk -i inplace '!/Proton/' /home/fountains/Scripts/steamidslist
+
+#Join the two lists
+join -t, <(sort /home/fountains/Scripts/steamidslist) <(sort /home/fountains/Scripts/protonversionslist)
